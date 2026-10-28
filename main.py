@@ -1,8 +1,22 @@
 import os
 import asyncio
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import threading
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
 from google import genai
+
+# Port dinleyicisi (Render Web Service kapanmasın diye)
+class SimpleHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot calisiyor!")
+
+def run_fake_server():
+    port = int(os.environ.get("PORT", 8080))
+    server = HTTPServer(("0.0.0.0", port), SimpleHandler)
+    server.serve_forever()
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -21,39 +35,4 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     user_text = update.message.text
-    chat_type = update.message.chat.type
-    bot_username = context.bot.username
-
-    is_group = chat_type in ["group", "supergroup"]
-    is_mentioned = f"@{bot_username}" in user_text
-    is_reply_to_bot = (
-        update.message.reply_to_message 
-        and update.message.reply_to_message.from_user.id == context.bot.id
-    )
-
-    if is_group and not (is_mentioned or is_reply_to_bot):
-        return
-
-    cleaned_prompt = user_text.replace(f"@{bot_username}", "").strip()
-    if not cleaned_prompt:
-        await update.message.reply_text("Dinliyorum, buyur?")
-        return
-
-    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
-
-    try:
-        response = ai_client.models.generate_content(
-            model=MODEL_NAME,
-            contents=cleaned_prompt,
-            config={"system_instruction": SYSTEM_INSTRUCTION}
-        )
-        await update.message.reply_text(response.text)
-    except Exception as e:
-        print(f"Hata detayı: {e}")
-        await update.message.reply_text("Şu an sistemsel bir yoğunluk var, birazdan tekrar dener misin?")
-
-if name == "__main__":
-    app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
-    app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
-    print("Bot devrede...")
-    app.run_polling()
+    chat_type = update.message.chat.
